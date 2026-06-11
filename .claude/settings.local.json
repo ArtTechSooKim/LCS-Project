@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(icacls \"app\\\\category\" /grant \"%USERNAME%:F\" /T)",
+      "Bash(rmdir /s /q \"app\\\\category\")",
+      "Bash(takeown /f \"f:\\\\김수\\\\김수2026\\\\3학년1학기\\\\MobileComputing\\\\culture-app-main\\\\app\\\\category\" /r /d y)",
+      "Bash(icacls \"f:\\\\김수\\\\김수2026\\\\3학년1학기\\\\MobileComputing\\\\culture-app-main\\\\app\\\\category\" /grant administrators:F /t)",
+      "Bash(rmdir /s /q \"f:\\\\김수\\\\김수2026\\\\3학년1학기\\\\MobileComputing\\\\culture-app-main\\\\app\\\\category\")",
+      "Bash(npx expo *)"
+    ]
+  }
+}

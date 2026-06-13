@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, font, radius, spacing, shadow } from '@/constants/theme';
 import { myProfile, categories } from '@/data/mock';
 import { useApp } from '@/constants/store';
+import { apiGetScore } from '@/services/api';
 import CultureCard from '@/components/CultureCard';
 import AuthModal from '@/components/AuthModal';
 import PreferenceModal from '@/components/PreferenceModal';
@@ -22,10 +23,24 @@ const MENU: { label: string; icon: string; route: string }[] = [
 
 export default function MyPageScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, likedItems, toggleLike, user, prefs, logout } = useApp();
+  const { isLoggedIn, likedItems, toggleLike, user, prefs, logout, token } = useApp();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [prefModalVisible, setPrefModalVisible] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  // 문화 스코어: 로그인 시 서버 실제 점수, 아니면 mock(75)로 폴백 → 점수 화면과 동일 출처
+  const [cultureScore, setCultureScore] = useState<number>(myProfile.cultureScore);
+
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        const data = await apiGetScore(token);
+        if (typeof data?.score === 'number') setCultureScore(data.score);
+      } catch {
+        // 서버 실패 시 mock 값 유지
+      }
+    })();
+  }, [token]);
 
   // 내가 고른 관심사 → 카테고리 아이콘 뱃지 (관심사를 바꾸면 자동으로 바뀜)
   const myCategories = useMemo(
@@ -65,7 +80,7 @@ export default function MyPageScreen() {
                   <Text style={styles.prefBtnText}>관심사 재설정</Text>
                 </Pressable>
               </View>
-              <Text style={styles.scoreText}>문화 스코어 {myProfile.cultureScore}점</Text>
+              <Text style={styles.scoreText}>문화 스코어 {cultureScore}점</Text>
             </View>
           </View>
 

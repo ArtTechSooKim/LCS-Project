@@ -20,6 +20,74 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
+declare global {
+  interface Window {
+    kakao: any;
+    ReactNativeWebView: any;
+  }
+}
+
+const KAKAO_APP_KEY = '8ea1d804b6487d88298dce1248d75855';
+const MAP_BASE_URL = 'https://distweb-rosy.vercel.app';
+
+// [모바일 앱 전용] 위치 정보 카카오 지도 HTML (키워드 검색 + 마커 클릭 시 RN으로 전달)
+const getDetailMapHtml = (keyword: string) => {
+  const safeKeyword = keyword ? keyword.replace(/["'\r\n]/g, ' ').trim() : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&libraries=services"></script>
+      <style> body, html { margin: 0; padding: 0; width: 100%; height: 100%; } #map { width: 100%; height: 100%; } </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        kakao.maps.load(function() {
+          var mapContainer = document.getElementById('map');
+          var mapOption = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 3 };
+          var map = new kakao.maps.Map(mapContainer, mapOption);
+
+          var ps = new kakao.maps.services.Places();
+          var geocoder = new kakao.maps.services.Geocoder();
+          var keyword = "${safeKeyword}";
+
+          function displayMarker(locPosition) {
+            var marker = new kakao.maps.Marker({ map: map, position: locPosition });
+            var infowindow = new kakao.maps.InfoWindow({
+              content: '<div style="padding:5px;font-size:12px;color:black;font-weight:bold;text-align:center;white-space:nowrap;cursor:pointer;">' + keyword + '<br/><span style="color:#007AFF; font-size:10px;">클릭하여 카카오맵 열기👆</span></div>'
+            });
+            infowindow.open(map, marker);
+            map.setCenter(locPosition);
+
+            kakao.maps.event.addListener(marker, 'click', function() {
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(keyword);
+              }
+            });
+          }
+
+          ps.keywordSearch(keyword, function(data, status) {
+            if (status === kakao.maps.services.Status.OK) {
+              displayMarker(new kakao.maps.LatLng(data[0].y, data[0].x));
+            } else {
+              geocoder.addressSearch(keyword, function(result, status2) {
+                if (status2 === kakao.maps.services.Status.OK) {
+                  displayMarker(new kakao.maps.LatLng(result[0].y, result[0].x));
+                }
+              });
+            }
+          });
+        });
+      </script>
+    </body>
+    </html>
+  `;
+};
+
 export default function DetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
@@ -77,6 +145,60 @@ export default function DetailScreen() {
       }
     })();
   }, [id, user]);
+
+  // [웹 전용] 위치 정보 카카오 지도 렌더링
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !event?.location) return;
+
+    const scriptId = 'kakao-map-script-detail';
+
+    const drawMap = () => {
+      window.kakao.maps.load(() => {
+        const container = document.getElementById('kakaomap-detail');
+        if (!container) return;
+
+        const map = new window.kakao.maps.Map(container, { center: new window.kakao.maps.LatLng(37.5665, 126.9780), level: 3 });
+        const ps = new window.kakao.maps.services.Places();
+        const geocoder = new window.kakao.maps.services.Geocoder();
+        const keyword = event.location.replace(/["'\r\n]/g, ' ').trim();
+
+        const displayMarker = (locPosition: any) => {
+          const marker = new window.kakao.maps.Marker({ map, position: locPosition });
+          const infowindow = new window.kakao.maps.InfoWindow({
+            content: `<div style="padding:5px;font-size:12px;color:black;font-weight:bold;text-align:center;white-space:nowrap;cursor:pointer;">${keyword}<br/><span style="color:#007AFF; font-size:10px;">클릭하여 길찾기👆</span></div>`
+          });
+          infowindow.open(map, marker);
+          map.setCenter(locPosition);
+
+          window.kakao.maps.event.addListener(marker, 'click', () => {
+            window.open(`https://map.kakao.com/link/search/${encodeURIComponent(keyword)}`, '_blank');
+          });
+        };
+
+        ps.keywordSearch(keyword, (data: any, status: any) => {
+          if (status === window.kakao.maps.services.Status.OK) {
+            displayMarker(new window.kakao.maps.LatLng(data[0].y, data[0].x));
+          } else {
+            geocoder.addressSearch(keyword, (result: any, status2: any) => {
+              if (status2 === window.kakao.maps.services.Status.OK) {
+                displayMarker(new window.kakao.maps.LatLng(result[0].y, result[0].x));
+              }
+            });
+          }
+        });
+      });
+    };
+
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&libraries=services&autoload=false`;
+      document.head.appendChild(script);
+      script.onload = () => drawMap();
+    } else {
+      drawMap();
+    }
+  }, [event?.location]);
 
   const submitReview = async () => {
     if (!token || myRating === 0 || !myContent.trim()) return;
@@ -269,15 +391,22 @@ export default function DetailScreen() {
           {/* 위치 정보 */}
           <View style={styles.block}>
             <Text style={styles.blockTitle}>위치 정보</Text>
-            <View style={{ height: 300, borderRadius: radius.md, overflow: 'hidden' }}>
+            <View style={{ height: 300, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surface }}>
               {Platform.OS === 'web' ? (
-                <iframe
-                  src={`https://m.map.kakao.com/actions/searchView?q=${encodeURIComponent(event.location)}`}
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                />
+                <View nativeID="kakaomap-detail" style={{ width: '100%', height: '100%' }} />
               ) : (
                 <WebView
-                  source={{ uri: `https://m.map.kakao.com/actions/searchView?q=${encodeURIComponent(event.location)}` }}
+                  originWhitelist={['*']}
+                  source={{
+                    html: getDetailMapHtml(event?.location || ''),
+                    baseUrl: MAP_BASE_URL,
+                  }}
+                  onMessage={(e) => {
+                    const clickedKeyword = e.nativeEvent.data;
+                    if (clickedKeyword) {
+                      Linking.openURL(`https://map.kakao.com/link/search/${encodeURIComponent(clickedKeyword)}`);
+                    }
+                  }}
                   style={{ flex: 1 }}
                 />
               )}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { colors, font, radius, spacing, shadow } from '@/constants/theme';
 import { useApp } from '@/constants/store';
 import { apiGetSchedules, type ApiSchedule } from '@/services/api';
@@ -54,7 +55,11 @@ export default function SchedulesScreen() {
       )}
 
       {schedules.map((s) => (
-        <View key={s.id} style={[styles.row, shadow.card]}>
+        <Pressable
+          key={s.id}
+          style={[styles.row, shadow.card]}
+          onPress={() => router.push(`/detail/${s.event_id}`)}
+        >
           <View style={styles.iconWrap}>
             <Ionicons name="ticket-outline" size={20} color={colors.primary} />
           </View>
@@ -62,8 +67,8 @@ export default function SchedulesScreen() {
             <Text style={styles.title} numberOfLines={1}>{s.title}</Text>
             <Text style={styles.meta}>{s.date_start}</Text>
           </View>
-          {s.booking_url ? <Ionicons name="chevron-forward" size={16} color={colors.textMuted} /> : null}
-        </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
       ))}
     </ScrollView>
   );

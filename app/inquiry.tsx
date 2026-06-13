@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { colors, font, radius, spacing, shadow } from '@/constants/theme';
+import InfoModal from '@/components/InfoModal';
 
 const TYPES = ['이용 문의', '오류 신고', '제휴/제안', '기타'];
 
 export default function InquiryScreen() {
   const [type, setType] = useState('이용 문의');
   const [text, setText] = useState('');
+  const [doneVisible, setDoneVisible] = useState(false);
 
   const submit = () => {
-    if (!text.trim()) {
-      Alert.alert('입력 오류', '문의 내용을 입력해주세요.');
-      return;
-    }
-    Alert.alert('접수 완료', '문의가 정상적으로 접수되었어요. 빠르게 답변드릴게요.');
+    if (!text.trim()) return;
     setText('');
+    setDoneVisible(true);
   };
 
   return (
@@ -47,6 +46,12 @@ export default function InquiryScreen() {
           <Text style={styles.submitText}>문의 보내기</Text>
         </Pressable>
       </ScrollView>
+
+      <InfoModal
+        visible={doneVisible}
+        title={`'${type}'이 접수되었습니다.`}
+        onClose={() => setDoneVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

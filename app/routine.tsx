@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { colors, font, radius, spacing, shadow } from '@/constants/theme';
 import { saveRoutine, getRoutine } from '@/services/storage';
+import InfoModal from '@/components/InfoModal';
 
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const FREQ = ['주 1회', '주 2회', '주 3회 이상', '매일'];
@@ -9,6 +10,7 @@ const FREQ = ['주 1회', '주 2회', '주 3회 이상', '매일'];
 export default function RoutineScreen() {
   const [days, setDays] = useState<string[]>(['토', '일']);
   const [freq, setFreq] = useState('주 1회');
+  const [savedVisible, setSavedVisible] = useState(false);
 
   // 저장된 루틴 복원
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function RoutineScreen() {
 
   const handleSave = async () => {
     await saveRoutine({ days, freq });
-    Alert.alert('저장 완료', `${days.join('·')}요일 / ${freq}로 설정했어요.`);
+    setSavedVisible(true);
   };
 
   return (
@@ -62,6 +64,12 @@ export default function RoutineScreen() {
       <Pressable style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveText}>저장하기</Text>
       </Pressable>
+
+      <InfoModal
+        visible={savedVisible}
+        title="루틴이 저장되었습니다."
+        onClose={() => setSavedVisible(false)}
+      />
     </ScrollView>
   );
 }

@@ -9,6 +9,7 @@ dist/
 dist_web/
 dist_web_v2/
 dist_web_v3/
+dist_web_v4/
 web-build/
 expo-env.d.ts
 

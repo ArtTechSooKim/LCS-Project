@@ -23,10 +23,11 @@ const MENU: { label: string; icon: string; route: string }[] = [
 
 export default function MyPageScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, likedItems, toggleLike, user, prefs, logout, token } = useApp();
+  const { isLoggedIn, likedItems, toggleLike, user, prefs, logout, deleteAccount, token } = useApp();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [prefModalVisible, setPrefModalVisible] = useState(false);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
+  const [withdrawConfirmVisible, setWithdrawConfirmVisible] = useState(false);
   // 문화 스코어: 로그인 시 서버 실제 점수, 아니면 mock(75)로 폴백 → 점수 화면과 동일 출처
   const [cultureScore, setCultureScore] = useState<number>(myProfile.cultureScore);
 
@@ -51,6 +52,12 @@ export default function MyPageScreen() {
   const handleLogout = () => {
     setLogoutConfirmVisible(false);
     logout();
+  };
+
+  const handleWithdraw = async () => {
+    setWithdrawConfirmVisible(false);
+    await deleteAccount();
+    router.replace('/');
   };
 
   return (
@@ -138,9 +145,14 @@ export default function MyPageScreen() {
       </View>
 
       {isLoggedIn && (
-        <Pressable style={styles.logout} onPress={() => setLogoutConfirmVisible(true)}>
-          <Text style={styles.logoutText}>로그아웃</Text>
-        </Pressable>
+        <View style={styles.accountActions}>
+          <Pressable style={styles.logout} onPress={() => setLogoutConfirmVisible(true)}>
+            <Text style={styles.logoutText}>로그아웃</Text>
+          </Pressable>
+          <Pressable style={styles.withdraw} onPress={() => setWithdrawConfirmVisible(true)}>
+            <Text style={styles.withdrawText}>회원탈퇴</Text>
+          </Pressable>
+        </View>
       )}
 
       <AuthModal visible={authModalVisible} onClose={() => setAuthModalVisible(false)} />
@@ -151,6 +163,14 @@ export default function MyPageScreen() {
         confirmColor={colors.dangerSoft}
         onConfirm={handleLogout}
         onCancel={() => setLogoutConfirmVisible(false)}
+      />
+      <ConfirmModal
+        visible={withdrawConfirmVisible}
+        title="정말 탈퇴 하시겠습니까?"
+        message="탈퇴하면 찜한 목록과 관심사 등 모든 데이터가 삭제되며 복구할 수 없어요."
+        confirmColor={colors.danger}
+        onConfirm={handleWithdraw}
+        onCancel={() => setWithdrawConfirmVisible(false)}
       />
     </ScrollView>
   );
@@ -196,6 +216,9 @@ const styles = StyleSheet.create({
   menuDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
   menuText: { flex: 1, fontSize: font.body, color: colors.text },
 
-  logout: { alignItems: 'center', paddingVertical: spacing.xl },
+  accountActions: { alignItems: 'center' },
+  logout: { alignItems: 'center', paddingTop: spacing.xl, paddingBottom: spacing.sm },
   logoutText: { color: colors.dangerSoft, fontSize: font.body, fontWeight: '600' },
+  withdraw: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.xl },
+  withdrawText: { color: colors.textMuted, fontSize: font.caption, fontWeight: '600' },
 });

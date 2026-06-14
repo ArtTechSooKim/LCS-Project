@@ -220,5 +220,5 @@ const styles = StyleSheet.create({
   logout: { alignItems: 'center', paddingTop: spacing.xl, paddingBottom: spacing.sm },
   logoutText: { color: colors.dangerSoft, fontSize: font.body, fontWeight: '600' },
   withdraw: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.xl },
-  withdrawText: { color: colors.textMuted, fontSize: font.caption, fontWeight: '600' },
+  withdrawText: { color: colors.dangerSoft, fontSize: font.caption, fontWeight: '600' },
 });

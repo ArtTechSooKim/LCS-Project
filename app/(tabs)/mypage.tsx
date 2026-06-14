@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
 
   accountActions: { alignItems: 'center' },
   logout: { alignItems: 'center', paddingTop: spacing.xl, paddingBottom: spacing.sm },
-  logoutText: { color: colors.dangerSoft, fontSize: font.body, fontWeight: '600' },
+  logoutText: { color: '#A93226', fontSize: font.body, fontWeight: '600' },
   withdraw: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.xl },
   withdrawText: { color: colors.dangerSoft, fontSize: font.caption, fontWeight: '600' },
 });

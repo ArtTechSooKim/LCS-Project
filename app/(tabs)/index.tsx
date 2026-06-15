@@ -85,13 +85,20 @@ export default function HomeScreen() {
           )
         );
         if (cancelled) return;
+        // 카테고리별 결과를 한 카테고리씩 번갈아 섞어서 특정 카테고리만 몰리지 않게 함
         const seen = new Set<string>();
-        const merged = results.flat().filter((it: any) => {
-          const key = String(it.id);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const merged: any[] = [];
+        const maxLen = Math.max(0, ...results.map((r) => r.length));
+        for (let i = 0; i < maxLen; i++) {
+          for (const r of results) {
+            const it = r[i];
+            if (!it) continue;
+            const key = String(it.id);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push(it);
+          }
+        }
         setRecommendedEvents(merged);
       } catch (error) {
         console.error("취향 맞춤 추천 로드 실패:", error);

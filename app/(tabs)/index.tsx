@@ -4,13 +4,12 @@ import ScoreGauge from '@/components/ScoreGauge';
 import SectionHeader from '@/components/SectionHeader';
 import { useApp } from '@/constants/store';
 import { colors, font, radius, shadow, spacing, layout } from '@/constants/theme';
-import { myProfile } from '@/data/mock';
+import { myProfile, categories } from '@/data/mock';
 import { apiGetScore, BASE_URL } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -23,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, toggleLike, likedIds, token } = useApp();
+  const { isLoggedIn, toggleLike, likedIds, token, prefs } = useApp();
   const [loginPrompt, setLoginPrompt] = useState(false);
   // 홈 문화 스코어: 로그인 시 서버 실제 점수, 아니면 mock(75)로 폴백 → 점수 화면과 동일 출처
   const [cultureScore, setCultureScore] = useState<number>(myProfile.cultureScore);
@@ -43,38 +42,34 @@ export default function HomeScreen() {
   const [dbEvents, setDbEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 화면이 켜질 때 DB 데이터 불러오기 (장르 필터링)
+  // 화면이 켜질 때 DB 데이터 불러오기
   useEffect(() => {
-    const fetchFilteredData = async () => {
+    const fetchData = async () => {
       try {
-        const savedGenres = await AsyncStorage.getItem('user_genres');
-
-        let url = `${BASE_URL}/events/list`;
-
-        if (savedGenres) {
-          const genresArray = JSON.parse(savedGenres);
-          if (genresArray.length > 0) {
-            url += `?genres=${encodeURIComponent(genresArray.join(','))}`;
-          }
-        }
-
-        const response = await axios.get(url);
-        
+        const response = await axios.get(`${BASE_URL}/events/list`);
         setDbEvents(response.data);
         setLoading(false);
-
       } catch (error) {
         console.error("데이터 통신 에러:", error);
         setLoading(false);
       }
     };
 
-    fetchFilteredData();
+    fetchData();
   }, []);
 
-  // 데이터를 인기 목록 2개, 추천 목록 2개로 나눔
+  // 내가 고른 관심사 카테고리의 한글 라벨 (취향 맞춤 추천 필터링용)
+  const prefLabels = useMemo(
+    () => categories.filter((c) => prefs.includes(c.id)).map((c) => c.label),
+    [prefs]
+  );
+
+  // 인기 문화생활: 전체 데이터 중 상위 2개 (이미 전체가 반영됨)
   const popular = dbEvents.slice(0, 2);
-  const recommended = dbEvents.slice(2, 4);
+  // 취향 맞춤 추천: 로그인 + 관심사가 있으면 관심사 카테고리만, 없으면 인기 다음 항목
+  const recommended = isLoggedIn && prefLabels.length > 0
+    ? dbEvents.filter((it) => prefLabels.includes(it.category)).slice(0, 2)
+    : dbEvents.slice(2, 4);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -147,16 +142,20 @@ export default function HomeScreen() {
         {/* 추천 (로그인 시에만 개인화) */}
         <View style={{ marginTop: spacing.xl }}>
           <SectionHeader title={isLoggedIn ? '취향 맞춤 추천' : '오늘의 추천'} />
-          <View style={styles.cardRow}>
-            {recommended.map((it) => (
-              <CultureCard
-                key={String(it.id)}
-                item={{ ...it, liked: likedIds.has(String(it.id)) }}
-                width={layout.cardColWidth}
-                onToggleLike={() => toggleLike(it)}
-              />
-            ))}
-          </View>
+          {recommended.length > 0 ? (
+            <View style={styles.cardRow}>
+              {recommended.map((it) => (
+                <CultureCard
+                  key={String(it.id)}
+                  item={{ ...it, liked: likedIds.has(String(it.id)) }}
+                  width={layout.cardColWidth}
+                  onToggleLike={() => toggleLike(it)}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.empty}>관심사에 맞는 문화생활이 아직 없어요.</Text>
+          )}
         </View>
       </ScrollView>
 
@@ -214,4 +213,5 @@ const styles = StyleSheet.create({
   loginBtnText: { color: colors.white, fontWeight: '700', fontSize: font.body },
 
   cardRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: layout.gridGap },
+  empty: { color: colors.textSub, paddingVertical: spacing.md },
 });

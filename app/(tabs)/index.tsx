@@ -66,9 +66,10 @@ export default function HomeScreen() {
 
   // 인기 문화생활: 전체 데이터 중 상위 2개 (이미 전체가 반영됨)
   const popular = dbEvents.slice(0, 2);
-  // 취향 맞춤 추천: 로그인 + 관심사가 있으면 관심사 카테고리만, 없으면 인기 다음 항목
+  const popularIds = new Set(popular.map((it) => it.id));
+  // 취향 맞춤 추천: 로그인 + 관심사가 있으면 관심사 카테고리 전체(스크롤로 계속 노출), 없으면 인기 다음 항목
   const recommended = isLoggedIn && prefLabels.length > 0
-    ? dbEvents.filter((it) => prefLabels.includes(it.category)).slice(0, 2)
+    ? dbEvents.filter((it) => prefLabels.includes(it.category) && !popularIds.has(it.id))
     : dbEvents.slice(2, 4);
 
   return (

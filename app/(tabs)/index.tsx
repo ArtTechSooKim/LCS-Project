@@ -11,6 +11,7 @@ import axios from 'axios';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -58,18 +59,56 @@ export default function HomeScreen() {
     fetchData();
   }, []);
 
-  // 내가 고른 관심사 카테고리의 한글 라벨 (취향 맞춤 추천 필터링용)
+  // 내가 고른 관심사 카테고리의 한글 라벨 (취향 맞춤 추천 검색용)
   const prefLabels = useMemo(
-    () => categories.filter((c) => prefs.includes(c.id)).map((c) => c.label),
+    () => categories.filter((c) => prefs.includes(c.id) && c.id !== 'all').map((c) => c.label),
     [prefs]
   );
+
+  const [recommendedEvents, setRecommendedEvents] = useState<any[]>([]);
+  const [recLoading, setRecLoading] = useState(false);
+
+  // 관심사 카테고리별로 검색해서 합침: /events/list는 일부 카테고리만 보유해 관심사 변경 시 결과가 비는 문제가 있어 /events/search 사용
+  useEffect(() => {
+    if (!isLoggedIn || prefLabels.length === 0) {
+      setRecommendedEvents([]);
+      setRecLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRecLoading(true);
+    (async () => {
+      try {
+        const results = await Promise.all(
+          prefLabels.map((genre) =>
+            axios.get(`${BASE_URL}/events/search`, { params: { genre, keyword: '' } }).then((r) => r.data)
+          )
+        );
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const merged = results.flat().filter((it: any) => {
+          const key = String(it.id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setRecommendedEvents(merged);
+      } catch (error) {
+        console.error("취향 맞춤 추천 로드 실패:", error);
+        setRecommendedEvents([]);
+      } finally {
+        if (!cancelled) setRecLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, prefLabels]);
 
   // 인기 문화생활: 전체 데이터 중 상위 2개 (이미 전체가 반영됨)
   const popular = dbEvents.slice(0, 2);
   const popularIds = new Set(popular.map((it) => it.id));
-  // 취향 맞춤 추천: 로그인 + 관심사가 있으면 관심사 카테고리 전체(스크롤로 계속 노출), 없으면 인기 다음 항목
+  // 취향 맞춤 추천: 로그인 + 관심사가 있으면 관심사 카테고리 검색 결과(스크롤로 계속 노출), 없으면 인기 다음 항목
   const recommended = isLoggedIn && prefLabels.length > 0
-    ? dbEvents.filter((it) => prefLabels.includes(it.category) && !popularIds.has(it.id))
+    ? recommendedEvents.filter((it) => !popularIds.has(it.id))
     : dbEvents.slice(2, 4);
 
   return (
@@ -143,7 +182,9 @@ export default function HomeScreen() {
         {/* 추천 (로그인 시에만 개인화) */}
         <View style={{ marginTop: spacing.xl }}>
           <SectionHeader title={isLoggedIn ? '취향 맞춤 추천' : '오늘의 추천'} />
-          {recommended.length > 0 ? (
+          {recLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: spacing.lg }} />
+          ) : recommended.length > 0 ? (
             <View style={styles.cardRow}>
               {recommended.map((it) => (
                 <CultureCard
